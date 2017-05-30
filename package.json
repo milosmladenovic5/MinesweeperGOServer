@@ -1,0 +1,22 @@
+{
+  "name": "minesweepergo",
+  "version": "1.0.0",
+  "description": "Server side of android application MinesweeperGO made for Mobile systems and services course.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "\u0016https://github.com/milosmladenovic5/MinesweeperGOServer.git"
+  },
+  "author": "milosmladenovic5, 0508994",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "content-disposition": "^0.5.2",
+    "express": "^4.15.3",
+    "neo4j": "^1.1.1",
+    "redis": "^2.7.1"
+  }
+}
