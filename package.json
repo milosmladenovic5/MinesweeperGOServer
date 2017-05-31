@@ -13,10 +13,14 @@
   "author": "milosmladenovic5, 0508994",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.17.2",
     "commander": "^2.9.0",
     "content-disposition": "^0.5.2",
     "express": "^4.15.3",
+    "multer": "^1.3.0",
     "neo4j": "^1.1.1",
+    "nodemon": "^1.11.0",
+    "path": "^0.12.7",
     "redis": "^2.7.1"
   }
 }
