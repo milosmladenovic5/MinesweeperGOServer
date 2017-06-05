@@ -40,13 +40,14 @@ router.post('/register',  function(req, res, next){
     var phoneNumber = body.phonenumber;
     var firstName = body.firstname;
     var lastName = body.lastname;
+    var imageURL = "/images/ud.jpg"
 
     var session = driver.session();
 
     session
     .run(
-      'CREATE (user:User {Username: {username}, Password: {password}, Email: {email}, FirstName: {firstName}, LastName: {lastName}, PhoneNumber: {phoneNumber}})',
-       {username:username, password:password, email:email, firstName:firstName, lastName:lastName, phoneNumber:phoneNumber})
+      'CREATE (user:User {Username: {username}, Password: {password}, Email: {email}, FirstName: {firstName}, LastName: {lastName}, PhoneNumber: {phoneNumber}, ImageURL :{imageURL} })',
+       {username:username, password:password, email:email, firstName:firstName, lastName:lastName, phoneNumber:phoneNumber, imageURL : imageURL})
     .then(function (result){
       session.close();
     });
@@ -66,10 +67,11 @@ router.post('/login', function(req, res, next){
     .then (function (result){
       result.records.forEach(function (record){
           var user = record.get('u');
-
+          console.log(user);
           session.close();
-          res.writeHead(200, {"Content-Type": "application/json"});
-          res.end(JSON.stringify(user));
+          //res.writeHead(200, {"Content-Type": "application/json"});
+          // res.end(JSON.stringify(user));
+          return res.send(user);
       });
     })
     .catch(function (error){
