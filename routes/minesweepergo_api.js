@@ -55,5 +55,29 @@ router.post('/register',  function(req, res, next){
 
 });
 
+router.post('/login', function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    var username = body.username;
+    var password = body.password;
+
+    var session = driver.session();
+
+    session
+    .run( 'MATCH (u:User {Username:{username}, Password:{password}}) return u',{username:username, password:password})
+    .then (function (result){
+      result.records.forEach(function (record){
+          var user = record.get('u');
+
+          session.close();
+          res.writeHead(200, {"Content-Type": "application/json"});
+          res.end(JSON.stringify(user));
+      });
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
 
 module.exports = router;
