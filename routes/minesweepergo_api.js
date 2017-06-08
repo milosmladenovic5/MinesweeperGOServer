@@ -16,7 +16,7 @@ router.post('/imageUpload', upload.single('pic'), function (req, res) {
         .run('MATCH (u:User {Username:{username}}) SET u.ImageURL = {filename} return u',{username:req.body.username, filename:filename})
         .then (function (result){
           session.close();
-          res.send("Success");
+          return res.send("Success");
         })
         .catch(function (error){
           console.log(error);
@@ -37,7 +37,7 @@ router.post('/getAllUsernames', function(req, res, next){
       });
       session.close();
       res.writeHead(200, {"Content-Type": "application/json"});
-      res.end(JSON.stringify(array));
+      return res.end(JSON.stringify(array));
     })
     .catch(function (error){
       console.log(error);
@@ -124,19 +124,22 @@ router.post('/getFriends', function(req, res, next){
 
     var body = JSON.parse(req.body.action);
 
+
+
     var username = body.username;
 
     var session = driver.session();
     var array = new Array();
 
     session
-    .run( 'MATCH (u:User {Username: {username} }) -> [:FRIENDS] ->(o) return o',{username : username})
+    .run( 'MATCH (u:User {Username: {username} }) - [:FRIENDS] - (o) return o',{username : username})
     .then (function (result){
       result.records.forEach(function (record){
         array.push(record.get('o'));
       });
       session.close();
       res.writeHead(200, {"Content-Type": "application/json"});
+      console.log(array);
       res.end(JSON.stringify(array));
     })
     .catch(function (error){
@@ -175,13 +178,77 @@ router.post('/endFriendship',  function(req, res, next){
 
     session
     .run(
-      'MATCH (n:User {Username: {username} }) <-[:FRIENDS] -> (m:User{BtDevice :{address} })',
+      'MATCH (n:User {Username: {username} }) <-[f:FRIENDS] -> (m:User{BtDevice :{address} }) delete f',
        {username:username, address : address}).then(function (result){
       console.log("ended friendship!!!");
       session.close();
     });
 
 });
+
+router.post('/locationMonitor',  function(req, res, next){
+    console.log("dolegnuo rikuest");
+    var body = JSON.parse(req.body.action);
+
+    var username = body.username;
+    var latitude = body.latitude;
+    var longitude = body.longitude;
+
+    console.log(username + " se nalazuva na: " + latitude + "  " + longitude);
+
+      var session = driver.session();
+
+        session
+        .run('MATCH (u:User {Username:{username}}) SET u.Latitude = {latitude}, u.Longitude = {longitude} return u',{username:username, latitude:latitude, longitude:longitude})
+        .then (function (result){
+          session.close();
+
+        })
+        .catch(function (error){
+          console.log(error);
+        });
+
+    session = driver.session();
+
+    var array = [];
+    session
+    .run(
+      'MATCH (n:User {Username: {username} }) <-[:FRIENDS] -> (m) return m',
+       {username:username}).then(function (result){
+        result.records.forEach(function (record){
+        var lat = (record.get('m.Latitude'));
+        var lat = (record.get('m.Longitude'));
+        var distance = getDistanceFromLatLonInM(latitude, longitude, lat, lon);
+        if(distance < 100){
+          var pair = {"Username":record.get('m.Username'), "Distance": distance};
+          array.push(pair);
+        }
+      });
+      session.close();
+    });
+
+      res.writeHead(200, {"Content-Type": "application/json"});
+      return res.end(JSON.stringify(array));
+
+});
+
+function getDistanceFromLatLonInM(lat1,lon1,lat2,lon2) {
+  var R = 6371; // Radius of the earth in km
+  var dLat = deg2rad(lat2-lat1);  // deg2rad below
+  var dLon = deg2rad(lon2-lon1);
+  var a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+    ;
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  var d = R * c; // Distance in km
+  return d * 1000;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI/180)
+}
 
 
 module.exports = router;
