@@ -1,0 +1,3 @@
+CREATE (n:OnlineUsers{NodeId:1})
+
+CREATE (n:Arena {Name:'Tvrdjava', CenterLatitude:43.326010, CenterLongitude:21.895402, Radius:210})

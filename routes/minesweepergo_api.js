@@ -80,16 +80,34 @@ router.post('/login', function(req, res, next){
     var session = driver.session();
 
     session
-    .run( 'MATCH (u:User {Username:{username}, Password:{password}}) return u',{username:username, password:password})
+    .run( 'MATCH (u:User),(o:OnlineUsers) where u.Username = {username} AND u.Password = {password} AND o.NodeId = 1 CREATE UNIQUE (u) - [:ISONLINE] -> (o) return u',{username:username, password:password})
     .then (function (result){
       result.records.forEach(function (record){
           var user = record.get('u');
-          console.log(user);
+          console.log(user.properties.Username + " ulogovan!");
           session.close();
-          //res.writeHead(200, {"Content-Type": "application/json"});
-          // res.end(JSON.stringify(user));
           return res.send(user);
       });
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
+router.post('/logout', function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    var username = body.username;
+ 
+    var session = driver.session();
+
+    session
+    .run( 'MATCH (u:User{Username: {username} }) - [i:ISONLINE] ->(o:OnlineUsers {NodeId:1}) delete i ',{username:username})
+    .then (function (result){
+
+        console.log(username + "izlogovan!");
+        return res.send("success");
+    
     })
     .catch(function (error){
       console.log(error);
@@ -123,28 +141,109 @@ router.post('/getFriends', function(req, res, next){
 
     var body = JSON.parse(req.body.action);
 
-
-
     var username = body.username;
 
     var session = driver.session();
     var array = new Array();
 
     session
-    .run( 'MATCH (u:User {Username: {username} }) - [:FRIENDS] - (o) return o',{username : username})
+    .run( 'MATCH (u:User {Username: {username} }) - [:FRIENDS] - (f) - [:ISONLINE] ->() return f',{username : username})
     .then (function (result){
       result.records.forEach(function (record){
-        array.push(record.get('o'));
+        array.push(record.get('f'));
       });
       session.close();
       res.writeHead(200, {"Content-Type": "application/json"});
       console.log(array);
-      res.end(JSON.stringify(array));
+      return res.end(JSON.stringify(array));
     })
     .catch(function (error){
       console.log(error);
     });
 });
+
+router.post('/getOnlineUsers', function(req, res, next){
+
+    var session = driver.session();
+    var array = new Array();
+
+    session
+    .run( 'MATCH (u:User) - [:ISONLINE] -> () return u', {})
+    .then (function (result){
+      result.records.forEach(function (record){
+        array.push(record.get('u'));
+      });
+      session.close();
+      res.writeHead(200, {"Content-Type": "application/json"});
+      console.log(array);
+      return res.end(JSON.stringify(array));
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
+
+router.post('/getArena', function(req, res, next){
+
+    var body = JSON.parse(req.body.action);
+
+    var name = body.name;
+    console.log("Neko mi trazi arenu - " + name);
+    var session = driver.session();
+    var array = new Array();
+
+    session
+    .run( 'MATCH (a:Arena {Name: {name} }) return a',{name : name})
+    .then (function (result){
+    result.records.forEach(function (record){
+          var arena = record.get('a');      
+          session.close();
+          console.log("Nekom sam je i dao - " + arena.properties.Name);
+          console.log(arena.properties);
+          return res.send(arena.properties);
+      });
+     
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
+router.post('/getArenasByDistance', function(req, res, next){
+
+
+    var body = JSON.parse(req.body.action);
+
+    var latitude = body.latitude;
+    var longitude = body.longitude;
+    var radius = body.radius;
+
+    console.log("Neko sa " + latitude + " " + longitude + " mi trazi arene u radijusu " + radius);
+    var session = driver.session();
+    var array = new Array();
+
+    session
+    .run( 'MATCH (a:Arena) return a',{ })
+    .then (function (result){
+      result.records.forEach(function (record){
+        var arena = record.get('a').properties;
+        distance = getDistanceFromLatLonInM(latitude, longitude, arena.CenterLatitude, arena.CenterLongitude);
+        console.log("Arena " + arena.Name + " udaljena : " +  distance + " metara!");
+        if(distance <= radius){
+           array.push(arena);
+        }   
+      });
+      session.close();
+      res.writeHead(200, {"Content-Type": "application/json"});
+      console.log(array);
+      return res.end(JSON.stringify(array));
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
 
 router.post('/startFriendship',  function(req, res, next){
     var body = JSON.parse(req.body.action);
@@ -157,7 +256,7 @@ router.post('/startFriendship',  function(req, res, next){
 
     session
     .run(
-      'MATCH (n:User), (m:User) WHERE n.Username = {username} AND m.btDevice = {address} CREATE (n) <- [r:FRIENDS] -> (m)',
+      'MATCH (n:User), (m:User) WHERE n.Username = {username} AND m.btDevice = {address} CREATE (n) - [r:FRIENDS] -> (m)',
        {username:username, address : address})
     .then(function (result){
       console.log("success!!!");
@@ -177,7 +276,7 @@ router.post('/endFriendship',  function(req, res, next){
 
     session
     .run(
-      'MATCH (n:User {Username: {username} }) <-[f:FRIENDS] -> (m:User{BtDevice :{address} }) delete f',
+      'MATCH (n:User {Username: {username} }) -[f:FRIENDS] - (m:User{BtDevice :{address} }) delete f',
        {username:username, address : address}).then(function (result){
       console.log("ended friendship!!!");
       session.close();
@@ -212,23 +311,24 @@ router.post('/locationMonitor',  function(req, res, next){
     var array = [];
     session
     .run(
-      'MATCH (n:User {Username: {username} }) <-[:FRIENDS] -> (m) return m',
+      'MATCH (n:User {Username: {username} }) -[:FRIENDS] - (m) return m',
        {username:username}).then(function (result){
         result.records.forEach(function (record){
-        var lat = (record.get('m.Latitude'));
-        var lat = (record.get('m.Longitude'));
+        var user = record.get('m');
+        var lat = user.properties.Latitude;
+        var lon = user.properties.Longitude;
+        var usernm = user.properties.Username;
         var distance = getDistanceFromLatLonInM(latitude, longitude, lat, lon);
-        if(distance < 100){
-          var pair = {"Username":record.get('m.Username'), "Distance": distance};
+        if(distance < 1000){
+          var pair = {"Username":usernm, "Distance": distance};
           array.push(pair);
         }
       });
       session.close();
-    });
-
       res.writeHead(200, {"Content-Type": "application/json"});
+      console.log(array);
       return res.end(JSON.stringify(array));
-
+    });
 });
 
 function getDistanceFromLatLonInM(lat1,lon1,lat2,lon2) {
