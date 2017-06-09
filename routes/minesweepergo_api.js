@@ -100,12 +100,11 @@ router.post('/getUser', function(req, res, next){
     var body = JSON.parse(req.body.action);
 
     var username = body.username;
-    var password = body.password;
 
     var session = driver.session();
 
     session
-    .run( 'MATCH (u:User {Username:{username} return u',{username:username, password:password})
+    .run( 'MATCH (u:User {Username:{username}}) return u',{username:username})
     .then (function (result){
       result.records.forEach(function (record){
           var user = record.get('u');
