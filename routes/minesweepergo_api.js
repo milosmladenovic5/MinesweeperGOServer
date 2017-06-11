@@ -114,6 +114,12 @@ router.post('/logout', function(req, res, next){
     });
 });
 
+router.get('/some', function(req, res,next){
+  console.log("I did it again");
+
+});
+
+
 router.post('/getUser', function(req, res, next){
     var body = JSON.parse(req.body.action);
 
@@ -185,7 +191,6 @@ router.post('/getOnlineUsers', function(req, res, next){
 
 
 router.post('/getArena', function(req, res, next){
-
     var body = JSON.parse(req.body.action);
 
     var name = body.name;
@@ -211,8 +216,6 @@ router.post('/getArena', function(req, res, next){
 });
 
 router.post('/getArenasByDistance', function(req, res, next){
-
-
     var body = JSON.parse(req.body.action);
 
     var latitude = body.latitude;
@@ -223,12 +226,28 @@ router.post('/getArenasByDistance', function(req, res, next){
     var session = driver.session();
     var array = new Array();
 
+    
+
+
+
     session
     .run( 'MATCH (a:Arena) return a',{ })
     .then (function (result){
       result.records.forEach(function (record){
         var arena = record.get('a').properties;
         distance = getDistanceFromLatLonInM(latitude, longitude, arena.CenterLatitude, arena.CenterLongitude);
+
+        var upRight = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 45, arena.Radius);
+        var upLeft = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 135, arena.Radius);
+        var bottomleft = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 235,arena.Radius);
+        var bottomRight = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude],325, arena.Radius);
+
+        console.log("UpperRight" + upRight);
+        console.log("UpperLeft" + upLeft);
+        console.log("bottomleft" + bottomleft);
+        console.log("bottomRight" + bottomRight);
+    
+
         console.log("Arena " + arena.Name + " udaljena : " +  distance + " metara!");
         if(distance <= radius){
            array.push(arena);
@@ -248,6 +267,9 @@ router.post('/getArenasByDistance', function(req, res, next){
 router.post('/startFriendship',  function(req, res, next){
     var body = JSON.parse(req.body.action);
 
+    console.log("Friendship call started");
+    
+
     var username = body.username;
     var address = body.address;
 
@@ -256,11 +278,12 @@ router.post('/startFriendship',  function(req, res, next){
 
     session
     .run(
-      'MATCH (n:User), (m:User) WHERE n.Username = {username} AND m.btDevice = {address} CREATE (n) - [r:FRIENDS] -> (m)',
+      'MATCH (n:User), (m:User) WHERE n.Username = {username} AND m.BtDevice = {address} CREATE (n) - [r:FRIENDS] -> (m)',
        {username:username, address : address})
     .then(function (result){
       console.log("success!!!");
       session.close();
+      res.end();
     });
 
 });
@@ -276,10 +299,11 @@ router.post('/endFriendship',  function(req, res, next){
 
     session
     .run(
-      'MATCH (n:User {Username: {username} }) -[f:FRIENDS] - (m:User{BtDevice :{address} }) delete f',
+      'MATCH (n:User {Username: {username} }) -[f:FRIENDS] - (m:User {BtDevice :{address} }) delete f',
        {username:username, address : address}).then(function (result){
       console.log("ended friendship!!!");
-      session.close();
+        session.close();
+        res.end();
     });
 
 });
@@ -349,5 +373,97 @@ function deg2rad(deg) {
   return deg * (Math.PI/180)
 }
 
+var gis = {
+  /**
+  * All coordinates expected EPSG:4326
+  * @param {Array} start Expected [lon, lat]
+  * @param {Array} end Expected [lon, lat]
+  * @return {number} Distance - meter.
+  */
+  calculateDistance: function(start, end) {
+    var lat1 = parseFloat(start[1]),
+        lon1 = parseFloat(start[0]),
+        lat2 = parseFloat(end[1]),
+        lon2 = parseFloat(end[0]);
+
+    return gis.sphericalCosinus(lat1, lon1, lat2, lon2);
+  },
+
+  /**
+  * All coordinates expected EPSG:4326
+  * @param {number} lat1 Start Latitude
+  * @param {number} lon1 Start Longitude
+  * @param {number} lat2 End Latitude
+  * @param {number} lon2 End Longitude
+  * @return {number} Distance - meters.
+  */
+  sphericalCosinus: function(lat1, lon1, lat2, lon2) {
+    var radius = 6371e3; // meters
+    var dLon = gis.toRad(lon2 - lon1),
+        lat1 = gis.toRad(lat1),
+        lat2 = gis.toRad(lat2),
+        distance = Math.acos(Math.sin(lat1) * Math.sin(lat2) +
+            Math.cos(lat1) * Math.cos(lat2) * Math.cos(dLon)) * radius;
+
+    return distance;
+  },
+
+  /**
+  * @param {Array} coord Expected [lon, lat] EPSG:4326
+  * @param {number} bearing Bearing in degrees
+  * @param {number} distance Distance in meters
+  * @return {Array} Lon-lat coordinate.
+  */
+  createCoord: function(coord, bearing, distance) {
+    /** http://www.movable-type.co.uk/scripts/latlong.html
+    * φ is latitude, λ is longitude, 
+    * θ is the bearing (clockwise from north), 
+    * δ is the angular distance d/R; 
+    * d being the distance travelled, R the earth’s radius*
+    **/
+    var 
+      radius = 6371e3, // meters
+      δ = Number(distance) / radius, // angular distance in radians
+      θ = gis.toRad(Number(bearing));
+      φ1 = gis.toRad(coord[1]),
+      λ1 = gis.toRad(coord[0]);
+
+    var φ2 = Math.asin(Math.sin(φ1)*Math.cos(δ) + 
+      Math.cos(φ1)*Math.sin(δ)*Math.cos(θ));
+
+    var λ2 = λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ)*Math.cos(φ1),
+      Math.cos(δ)-Math.sin(φ1)*Math.sin(φ2));
+    // normalise to -180..+180°
+    λ2 = (λ2 + 3 * Math.PI) % (2 * Math.PI) - Math.PI; 
+
+    console.log(gis.toDeg(λ2));
+    return [gis.toDeg(λ2), gis.toDeg(φ2)];
+  },
+  /**
+   * All coordinates expected EPSG:4326
+   * @param {Array} start Expected [lon, lat]
+   * @param {Array} end Expected [lon, lat]
+   * @return {number} Bearing in degrees.
+   */
+  getBearing: function(start, end){
+    var
+      startLat = gis.toRad(start[1]),
+      startLong = gis.toRad(start[0]),
+      endLat = gis.toRad(end[1]),
+      endLong = gis.toRad(end[0]),
+      dLong = endLong - startLong;
+
+    var dPhi = Math.log(Math.tan(endLat/2.0 + Math.PI/4.0) / 
+      Math.tan(startLat/2.0 + Math.PI/4.0));
+
+    if (Math.abs(dLong) > Math.PI) {
+      dLong = (dLong > 0.0) ? -(2.0 * Math.PI - dLong) : (2.0 * Math.PI + dLong);
+    }
+
+    return (gis.toDeg(Math.atan2(dLong, dPhi)) + 360.0) % 360.0;
+  },
+  toDeg: function(n) { return n * 180 / Math.PI; },
+  toRad: function(n) { return n * Math.PI / 180; }
+};
 
 module.exports = router;

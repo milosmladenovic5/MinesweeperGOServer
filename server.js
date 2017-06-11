@@ -23,6 +23,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 //app.use('/', index);
 app.use('/api', minesweeper_api);
 
-app.listen(port, function(){
+app.listen(port, '0.0.0.0', function(){
     console.log('Server started on port', + port);
 })
