@@ -258,10 +258,6 @@ router.post('/getArenasByDistance', function(req, res, next){
     var session = driver.session();
     var array = new Array();
 
-    
-
-
-
     session
     .run( 'MATCH (a:Arena) return a',{ })
     .then (function (result){
@@ -387,6 +383,34 @@ router.post('/locationMonitor',  function(req, res, next){
     });
 });
 
+router.post('/getArenaGames', function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    var arenaName = body.arenaName; 
+
+    var session = driver.session();
+    var array = new Array();
+    session
+    .run( 'MATCH (a:Arena {Name: {arenaName} }) - [:HASGAME] ->(g) return g',{arenaName:arenaName })
+    .then (function (result){
+      result.records.forEach(function (record){
+        var game = record.get('g').properties;
+          
+           array.push(arena); 
+      });
+      session.close();
+      res.writeHead(200, {"Content-Type": "application/json"});
+      console.log(array);
+      return res.end(JSON.stringify(array));
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
+
+
+
 function getDistanceFromLatLonInM(lat1,lon1,lat2,lon2) {
   var R = 6371; // Radius of the earth in km
   var dLat = deg2rad(lat2-lat1);  // deg2rad below
@@ -497,5 +521,7 @@ var gis = {
   toDeg: function(n) { return n * 180 / Math.PI; },
   toRad: function(n) { return n * Math.PI / 180; }
 };
+
+
 
 module.exports = router;
