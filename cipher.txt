@@ -1,3 +1,4 @@
 CREATE (n:OnlineUsers{NodeId:1})
 
 CREATE (n:Arena {Name:'Tvrdjava', CenterLatitude:43.326010, CenterLongitude:21.895402, Radius:210.1})
+CREATE (n:Arena {Name:'MilosljevBoks', CenterLatitude:43.33302444, CenterLongitude:21.89250954, Radius:50.1})
