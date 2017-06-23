@@ -4,10 +4,14 @@ var bodyParser = require('body-parser');
 var multer  = require('multer');
 var fs = require("fs");
 
+
+
 var minesweeper_api = require('./routes/minesweepergo_api');
 
 var app = express();
 var port = 8000;
+
+app.set('port', (process.env.PORT || port));
 //view engine
 
 
@@ -23,6 +27,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 //app.use('/', index);
 app.use('/api', minesweeper_api);
 
-app.listen(port, '0.0.0.0', function(){
-    console.log('Server started on port', + port);
-})
+// app.listen(port, '0.0.0.0', function(){
+//     console.log('Server started on port', + port);
+// })
+
+// heroku
+app.listen(app.get('port'), function() {
+  console.log('Node app is running on port', app.get('port'));
+});
