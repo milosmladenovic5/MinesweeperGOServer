@@ -3,9 +3,41 @@ var neo4j = require('neo4j-driver').v1;
 var router  = express.Router();
 var multer  = require('multer');
 
-var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "newbase"));
+//var driver = neo4j.driver("bolt://localhost", neo4j.auth.basic("neo4j", "newbase"));
+
+// password je nemoguce povratiti - oPRIJEZ MUJO
+var driver = neo4j.driver("bolt://hobby-knmkakkmojekgbkecndlckpl.dbs.graphenedb.com:24786", neo4j.auth.basic("admin", "b.obEHYZ3nIFJm.q8fSiEw2pwxbwnik"));
+
 
 var upload = multer({dest:'./public/images/'});
+
+router.get('/test',  function(req, res, next){
+
+    var username = "Mujo";
+    var password = "booosanac";
+    var email = "volemAlaha@gmail.com";
+    var phoneNumber = "bosna";
+    var firstName = "Fihret";
+    var lastName = "Karakutrtovic";
+    var imageURL = "/images/ud.jpg"
+    var btDevice = "kek";
+
+    var session = driver.session();
+    console.log("Registration called");
+
+
+    session
+    .run(
+      'CREATE (user:User {Username: {username}, Password: {password}, Email: {email}, FirstName: {firstName}, LastName: {lastName}, PhoneNumber: {phoneNumber}, ImageURL :{imageURL}, BtDevice:{btDevice} })',
+       {username:username, password:password, email:email, firstName:firstName, lastName:lastName, phoneNumber:phoneNumber, imageURL : imageURL, btDevice: btDevice})
+    .then(function (result){
+      console.log("successful registration");
+      session.close();
+    });
+
+});
+
+
 
 router.post('/imageUpload', upload.single('pic'), function (req, res) {
         var filename = '/images/'+ req.file.filename;
