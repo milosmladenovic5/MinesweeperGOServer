@@ -396,7 +396,7 @@ router.post('/getArenaGames', function(req, res, next){
       result.records.forEach(function (record){
         var game = record.get('g').properties;
           
-           array.push(arena); 
+           array.push(game); 
       });
       session.close();
       res.writeHead(200, {"Content-Type": "application/json"});
