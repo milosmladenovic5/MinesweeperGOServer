@@ -137,7 +137,7 @@ router.post('/logout', function(req, res, next){
     .run( 'MATCH (u:User{Username: {username} }) - [i:ISONLINE] ->(o:OnlineUsers {NodeId:1}) delete i ',{username:username})
     .then (function (result){
 
-        console.log(username + "izlogovan!");
+        console.log(username + " izlogovan!");
         return res.send("success");
     
     })
@@ -265,18 +265,18 @@ router.post('/getArenasByDistance', function(req, res, next){
         var arena = record.get('a').properties;
         distance = getDistanceFromLatLonInM(latitude, longitude, arena.CenterLatitude, arena.CenterLongitude);
 
-        var upRight = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 45, arena.Radius);
-        var upLeft = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 135, arena.Radius);
-        var bottomleft = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 235,arena.Radius);
-        var bottomRight = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude],325, arena.Radius);
+        // var upRight = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 45, arena.Radius);
+        // var upLeft = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 135, arena.Radius);
+        // var bottomleft = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude], 235,arena.Radius);
+        // var bottomRight = gis.createCoord([arena.CenterLatitude,arena.CenterLongitude],325, arena.Radius);
 
-        console.log("UpperRight" + upRight);
-        console.log("UpperLeft" + upLeft);
-        console.log("bottomleft" + bottomleft);
-        console.log("bottomRight" + bottomRight);
+        // console.log("UpperRight" + upRight);
+        // console.log("UpperLeft" + upLeft);
+        // console.log("bottomleft" + bottomleft);
+        // console.log("bottomRight" + bottomRight);
     
 
-        console.log("Arena " + arena.Name + " udaljena : " +  distance + " metara!");
+        // console.log("Arena " + arena.Name + " udaljena : " +  distance + " metara!");
         if(distance <= radius){
            array.push(arena);
         }   
@@ -386,7 +386,8 @@ router.post('/locationMonitor',  function(req, res, next){
 router.post('/getArenaGames', function(req, res, next){
     var body = JSON.parse(req.body.action);
 
-    var arenaName = body.arenaName; 
+    var arenaName = body.arenaName;
+    console.log("Fetching games for arena : " + arenaName); 
 
     var session = driver.session();
     var array = new Array();
@@ -395,7 +396,6 @@ router.post('/getArenaGames', function(req, res, next){
     .then (function (result){
       result.records.forEach(function (record){
         var game = record.get('g').properties;
-          
            array.push(game); 
       });
       session.close();
@@ -408,7 +408,80 @@ router.post('/getArenaGames', function(req, res, next){
     });
 });
 
+router.post('/createGame',  function(req, res, next){
+    var body = JSON.parse(req.body.action);
 
+    var username = body.creatorUsername;
+    var arenaName = body.arenaName;
+
+    var session = driver.session();
+    
+    session
+    .run('MATCH (gameId:GameId) SET gameId.Value=gameId.Value+1 return gameId.Value')
+    .then(function(result){
+        result.records.forEach(function (record){
+        var idValue = parseInt(record.get('gameId.Value'));
+
+        session
+        .run(
+          'MATCH (arena:Arena {Name: {arenaName} }) CREATE (game:Game {CreatorUsername: {username}, GameId: {gameId}}) <- [r:HASGAME] - (arena)',
+          {arenaName:arenaName, username:username, gameId:idValue})
+        .then(function (result){
+          console.log("Successful game creation.");  
+          session.close();
+          
+          var gameId = {gameId:idValue};
+          return res.send(gameId);
+         });
+      });
+  });
+});
+
+
+router.post("/addMines", function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    console.log(body);
+    var gameId = body.gameId;
+    var minesArray = JSON.stringify(body.minesArray);
+
+    var session = driver.session();
+
+    session
+    .run('MATCH (game:Game {GameId:{gameId}}) SET game.Mines = {mines}', {gameId:gameId, mines:minesArray})
+    .then(function(result){
+        console.log("Successfully added mines.");
+        res.send("nedam ti nista");
+
+    }).catch(function (error){
+      console.log(error);
+    });   
+});
+
+router.post("/getGame", function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    var gameId = body.gameId;
+    console.log("Neko oce gejm: " + gameId);
+    
+    var session = driver.session();
+    var array = new Array();
+    session
+    .run( 'MATCH (g:Game {GameId: {gameId} }) return g',{gameId:gameId })
+    .then (function (result){
+      result.records.forEach(function (record){
+        var game = record.get('g').properties;
+           array.push(game); 
+      });
+      session.close();
+      res.writeHead(200, {"Content-Type": "application/json"});
+      console.log(array);
+      return res.end(JSON.stringify(array));
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
 
 
 function getDistanceFromLatLonInM(lat1,lon1,lat2,lon2) {
