@@ -386,8 +386,7 @@ router.post('/locationMonitor',  function(req, res, next){
 router.post('/getArenaGames', function(req, res, next){
     var body = JSON.parse(req.body.action);
 
-    var arenaName = body.arenaName;
-    console.log("Fetching games for arena : " + arenaName); 
+    var arenaName = body.arenaName; 
 
     var session = driver.session();
     var array = new Array();
