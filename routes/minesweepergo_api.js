@@ -474,7 +474,54 @@ router.post("/getGame", function(req, res, next){
       });
       session.close();
       res.writeHead(200, {"Content-Type": "application/json"});
-      console.log(array);
+      console.log(array);   // GRESKA ALI MILOSA MRZI DA MENJA
+      return res.end(JSON.stringify(array));
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
+router.post("/deleteGameAndUpdateScore", function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    var gameId = body.gameId;
+    var winner = body.winner;
+    var loser = body.loser;
+    var pointsWon = body.pointsWon;
+    var penaltyPoints = body.penaltyPoints;
+    
+    var session = driver.session();
+    session
+    .run( 'MATCH (g:Game {GameId: {gameId} }) <- [r:HASGAME] - (), (w:User {Username:{winner} }), (l:User {Username:{loser} }) set w.Points = w.Points + {pw}, l.Points = l.Points - {pp} delete r,g',{gameId:gameId, winner:winner, loser:loser,pw:pointsWon, pp:penaltyPoints  })
+    .then (function (result){
+      result.records.forEach(function (record){
+     // - || - 
+      });
+      session.close();
+      return res.send("ok");
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
+router.post("/getScoreboard", function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    var session = driver.session();
+    var array = new Array();
+    session
+    .run( 'MATCH (u:User) return u ORDER BY u.Points DESC',{})
+    .then (function (result){
+      result.records.forEach(function (record){
+        var user = record.get('u').properties;
+        var ret = {Username:user.Username, Points:user.Points}
+           array.push(ret); 
+      });
+      session.close();
+      res.writeHead(200, {"Content-Type": "application/json"});
+      console.log(array);   
       return res.end(JSON.stringify(array));
     })
     .catch(function (error){
