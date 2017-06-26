@@ -94,7 +94,7 @@ router.post('/register',  function(req, res, next){
 
     session
     .run(
-      'CREATE (user:User {Username: {username}, Password: {password}, Email: {email}, FirstName: {firstName}, LastName: {lastName}, PhoneNumber: {phoneNumber}, ImageURL :{imageURL}, BtDevice:{btDevice} })',
+      'CREATE (user:User {Username: {username}, Password: {password}, Email: {email}, FirstName: {firstName}, LastName: {lastName}, PhoneNumber: {phoneNumber}, ImageURL :{imageURL}, BtDevice:{btDevice}, Points:0.0 })',
        {username:username, password:password, email:email, firstName:firstName, lastName:lastName, phoneNumber:phoneNumber, imageURL : imageURL, btDevice: btDevice})
     .then(function (result){
       console.log("successful registration");
@@ -329,7 +329,7 @@ router.post('/endFriendship',  function(req, res, next){
     .run(
       'MATCH (n:User {Username: {username} }) -[f:FRIENDS] - (m:User {BtDevice :{address} }) delete f',
        {username:username, address : address}).then(function (result){
-      console.log("ended friendship!!!");
+      console.log("Ended friendship!!!");
         session.close();
         res.end();
     });
@@ -337,14 +337,13 @@ router.post('/endFriendship',  function(req, res, next){
 });
 
 router.post('/locationMonitor',  function(req, res, next){
-    console.log("dolegnuo rikuest");
     var body = JSON.parse(req.body.action);
 
     var username = body.username;
     var latitude = body.latitude;
     var longitude = body.longitude;
 
-    console.log(username + " se nalazuva na: " + latitude + "  " + longitude);
+    console.log(username + " is at: " + latitude + "  " + longitude);
 
       var session = driver.session();
 
@@ -485,6 +484,8 @@ router.post("/getGame", function(req, res, next){
 router.post("/deleteGameAndUpdateScore", function(req, res, next){
     var body = JSON.parse(req.body.action);
 
+    console.log(body);
+
     var gameId = body.gameId;
     var winner = body.winner;
     var loser = body.loser;
@@ -493,7 +494,7 @@ router.post("/deleteGameAndUpdateScore", function(req, res, next){
     
     var session = driver.session();
     session
-    .run( 'MATCH (g:Game {GameId: {gameId} }) <- [r:HASGAME] - (), (w:User {Username:{winner} }), (l:User {Username:{loser} }) set w.Points = w.Points + {pw}, l.Points = l.Points - {pp} delete r,g',{gameId:gameId, winner:winner, loser:loser,pw:pointsWon, pp:penaltyPoints  })
+    .run( 'MATCH (g:Game {GameId: {gameId}}), (g) <- [r:HASGAME] - (a)  delete r,g WITH Count(*) as dummy MATCH (w:User {Username: {winner}})  set w.Points = w.Points + {pw} WITH Count(*) as dummy MATCH (l:User {Username: {loser} }) set l.Points = l.Points - {pp}',{gameId:gameId, winner:winner, loser:loser,pw:pointsWon, pp:penaltyPoints  })
     .then (function (result){
       result.records.forEach(function (record){
      // - || - 
@@ -507,8 +508,8 @@ router.post("/deleteGameAndUpdateScore", function(req, res, next){
 });
 
 router.post("/getScoreboard", function(req, res, next){
-    var body = JSON.parse(req.body.action);
-
+  
+    console.log("Fetching scoreboard..");
     var session = driver.session();
     var array = new Array();
     session
