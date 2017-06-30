@@ -530,6 +530,32 @@ router.post("/getScoreboard", function(req, res, next){
     });
 });
 
+router.post('/getArenasByGamesNumber', function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    var minNumberOfGames = body.minNumberOfGames;
+
+    console.log("Neko mi trazi sve arene koje imaju " + minNumberOfGames + " ili vise igara.");
+    var session = driver.session();
+    var array = new Array();
+
+    session
+    .run( 'MATCH (a:Arena) - [r:HASGAME] -> () WITH a, COUNT(r) AS cnt WHERE cnt >= {n} RETURN a',{n:minNumberOfGames })
+    .then (function (result){
+      result.records.forEach(function (record){
+        var arena = record.get('a').properties;
+        array.push(arena);   
+      });
+      session.close();
+      res.writeHead(200, {"Content-Type": "application/json"});
+      console.log(array);
+      return res.end(JSON.stringify(array));
+    })
+    .catch(function (error){
+      console.log(error);
+    });
+});
+
 
 function getDistanceFromLatLonInM(lat1,lon1,lat2,lon2) {
   var R = 6371; // Radius of the earth in km
