@@ -99,6 +99,7 @@ router.post('/register',  function(req, res, next){
     .then(function (result){
       console.log("successful registration");
       session.close();
+      return res.send("Success");
     });
 
 });
@@ -554,6 +555,30 @@ router.post('/getArenasByGamesNumber', function(req, res, next){
     .catch(function (error){
       console.log(error);
     });
+});
+
+router.post('/createArena',  function(req, res, next){
+    var body = JSON.parse(req.body.action);
+
+    var name = body.name;
+    var radius = body.radius;
+    var centerLatitude = body.latitude;
+    var centerLongitude  = body.longitude;
+
+    var session = driver.session();
+    console.log("Create arena called");
+    console.log(body);
+
+    session
+    .run(
+      'CREATE (arena:Arena {Name: {name}, CenterLatitude: {latitude}, CenterLongitude: {longitude}, Radius: {radius}})',
+       {name:name, latitude:centerLatitude, longitude:centerLongitude, radius:radius})
+    .then(function (result){
+      console.log("successful arena creation");
+      session.close();
+      res.end();
+    });
+
 });
 
 
